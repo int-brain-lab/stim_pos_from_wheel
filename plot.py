@@ -66,6 +66,8 @@ ax.scatter(ses.lag_ms, -ses.gain_free_fit if ses.gain_free_fit.mean() < 0 else s
 ax.axhline(124, color='0.6', lw=0.5, ls=':')
 ax.set_xlabel('fitted display lag (ms)'); ax.set_ylabel('|free-fit gain| (deg/rad)')
 ax.xaxis.set_major_locator(MaxNLocator(3)); ax.yaxis.set_major_locator(MaxNLocator(3))
+for a, letter in zip(fig.axes, 'abcdefg'):  # axes in creation order: 3 examples, 3 epochs, lag/gain
+    a.text(-0.32, 1.12, letter, transform=a.transAxes, fontsize=9, fontweight='bold', va='bottom')
 fig.savefig(R / 'fig_stim_pos_decoding.pdf', bbox_inches='tight')
 fig.savefig(R / 'fig_stim_pos_decoding.png', dpi=200, bbox_inches='tight')
 
@@ -73,13 +75,28 @@ n = len(ses)
 cap = (r"\caption{\textbf{On-screen stimulus azimuth is recoverable from wheel position and trial "
        r"timing.} Ground truth is the Bonsai stimulus-position log (\texttt{\_iblrig\_stimPositionScreen}), "
        r"aligned to photodiode stimOn (residual SD " + f"{ses.resid_sd_ms.median():.0f}" +
-       r" ms). \textbf{Top}, example trials from one session: truth (grey), physics model "
-       r"$x_0 + 124^\circ/\mathrm{rad}\cdot\Delta w(t-\tau)$ with known side (dashed), the same with "
-       r"side inferred from wheel direction at response and the outcome-specific stimOff delay (blue), "
-       r"and a gradient-boosting model on wheel displacement and time since stimOn only (red). "
-       r"\textbf{Bottom}, mean absolute error per session (dots, $n=" + str(n) +
-       r"$ sessions, one per lab; bars, median) for samples before response, after response, and "
-       r"on no-go trials; dotted line, one encoder step ($0.76^\circ$). GBM tiers: T0 wheel only, "
-       r"T1 + response time, T2 + feedback/stimOff times; 5-fold cross-validation grouped by trial. "
-       r"Right, fitted display lag and free-fit gain per session (dotted: nominal 124$^\circ$/rad).}")
+       r" ms). "
+       r"\textbf{a--c}, Example trials from session \texttt{" + eid[:8] + r"}, showing stimulus azimuth "
+       r"against time from stimOn. Lines: logged truth (thick grey); physics model "
+       r"$x_0 + G\,\Delta w(t-\tau)$, $|G|=124^\circ$/rad, with the side known (dashed black); the same "
+       r"model with the side inferred from the wheel direction at response and the outcome-specific "
+       r"stimOff delay (blue); a gradient-boosting model (GBM) given only wheel displacement and time "
+       r"since stimOn (T0, red). The vertical line marks the response time. "
+       r"\textbf{a}, Correct trial with the stimulus starting on the left ($-35^\circ$) and brought to the "
+       r"centre. \textbf{b}, Correct trial with the stimulus starting on the right ($+35^\circ$). "
+       r"\textbf{c}, Error trial: the stimulus is driven away from the centre, to $\approx70^\circ$. "
+       r"The physics models overlie the truth. The T0 model cannot know the starting side, so it "
+       r"wanders near the average of the two possibilities. "
+       r"\textbf{d--f}, Mean absolute error per session (dots, $n=" + str(n) +
+       r"$ sessions, one per lab; bars, median across sessions; log scale) for each model: physics "
+       r"with side known or inferred, and GBM with features T2 (wheel + all event times), T1 (wheel + "
+       r"response time) or T0 (wheel only), cross-validated in 5 folds grouped by trial. The dotted "
+       r"line marks one encoder step ($0.76^\circ$). "
+       r"\textbf{d}, Samples from stimOn to response on answered trials. "
+       r"\textbf{e}, Samples from response to stimOff on answered trials; the error of $\approx2^\circ$ "
+       r"comes from Bonsai freezing on the last frame before the threshold event. "
+       r"\textbf{f}, Samples from no-go trials (only sessions with no-go trials). Without the side, no "
+       r"decoder can place the stimulus. "
+       r"\textbf{g}, Display lag $\tau$ fitted per session against the magnitude of an unconstrained "
+       r"least-squares gain (dotted line: nominal 124$^\circ$/rad).}")
 (R / 'fig_stim_pos_decoding.tex').write_text(cap + '\n')

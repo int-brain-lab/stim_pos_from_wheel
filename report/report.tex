@@ -10,7 +10,7 @@
 \sloppy
 
 \title{Decoding the on-screen stimulus position\\from wheel position and trial timing in the IBL task}
-\author{Michael Schartner}
+\author{Michael Schartner \and Claude Opus 5.5 (Anthropic)}
 \date{18 November 2026}
 
 \begin{document}
@@ -46,7 +46,7 @@ sessions used here ran iblrig version 6 (6.2.5--6.5.3), and all used these setti
 stimulus-position log. This gave \NSessions{} sessions from 8 labs (Table~\ref{tab:sessions}): \NTrials{} trials,
 of which \NNogo{} were no-go, and \NSamples\,M evaluation samples.
 
-\paragraph{Ground truth.} During each session Bonsai writes \texttt{raw\_behavior\_data/}\allowbreak\texttt{\_iblrig\_stimPositionScreen.raw.csv}.
+\paragraph{Ground truth.} During each session Bonsai writes the file \texttt{\_iblrig\_stimPositionScreen.raw.csv} (collection \texttt{raw\_behavior\_data}).
 Each row holds three columns: the contrast currently shown (0 when no stimulus is on screen), the stimulus
 azimuth in degrees, and a Bonsai wall-clock timestamp. A row is written only when a value changes, so the log
 is read as a zero-order hold. The azimuth changes in steps of $0.761^\circ$. This is exactly one step of the
@@ -192,7 +192,7 @@ photodiode alignment corrects its timing, but individual frame drops are not mod
 \end{itemize}
 
 \section{Code}
-Code: \url{https://github.com/int-brain-lab/stim_pos_from_wheel}: \texttt{load.py} (loading and clock alignment),
+Repository: \url{https://github.com/int-brain-lab/stim_pos_from_wheel}: \texttt{load.py} (loading and clock alignment),
 \texttt{decode.py} (models and metrics; \texttt{python decode.py <eids>}), \texttt{plot.py} (figure), and
 \texttt{report/make\_tables.py} (tables). Build the report with \texttt{tectonic report.tex}.
 
