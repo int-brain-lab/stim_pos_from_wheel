@@ -70,5 +70,19 @@ mac = {
     'TzeroMAE': f"{med.loc[('hgb_T0', 'pre_resp')].mae:.0f}",
     'TtwoMAE': f"{med.loc[('hgb_T2', 'pre_resp')].mae:.1f}",
 }
+# per-trial R2 of the physics decoder (side inferred), answered trials, all sessions
+import numpy as np
+r2s, flat = [], 0
+for e in ses.eid.str[:8]:
+    d = pd.read_parquet(R / f'samples_{e}.pqt')
+    for _, t in d[d.choice != 0].groupby('trial'):
+        y = t.truth.to_numpy()
+        if y.std() < 0.5:
+            flat += 1
+            continue
+        r2s.append(1 - np.sum((y - t.pred_physics_infer) ** 2) / np.sum((y - y.mean()) ** 2))
+r2s = np.array(r2s)
+mac.update(NTrialRtwo=f'{len(r2s):,}'.replace(',', '{,}'), NFlat=flat,
+           TrialRtwoMed=f'{np.median(r2s):.2f}', TrialRtwoNine=f'{100 * np.mean(r2s > 0.9):.0f}')
 (HERE / 'macros.tex').write_text(''.join(rf'\newcommand{{\{k}}}{{{v}}}' + '\n' for k, v in mac.items()))
 print('wrote tables + macros')

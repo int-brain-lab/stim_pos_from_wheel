@@ -5,7 +5,8 @@ Samples: 10 ms grid from stimOn to stimOff, every trial.
 
 Decoders (all cross-validated by trial where fitted):
   physics_side   x0 (+-35 from stimulus side) + G * (wheel(t-lag) - wheel(stimOn-lag)), frozen at
-                 response_times + lag (screen shows w(t-lag)); |G| = 4 deg/mm * 31 mm = 124 deg/rad
+                 response_times + lag (screen shows w(t-lag)), displacement clipped to +-35 deg (the
+                 response threshold; the stimulus never moves further); |G| = 4 deg/mm * 31 mm = 124 deg/rad
                  (= 0.761 deg per 1024-tick encoder step in the Bonsai log); sign of G and display
                  lag fitted per session.
   physics_infer  same, but side inferred from wheel + timing only:
@@ -32,6 +33,7 @@ warnings.filterwarnings('ignore')
 OUT = Path(__file__).parent / 'results'
 OUT.mkdir(exist_ok=True)
 DT = 0.01
+THR = 35.0  # response threshold, deg of stimulus displacement (task setting ALL_THRESHOLDS)
 
 
 def build_samples(d, lag=0.0):
@@ -75,7 +77,8 @@ def run(eid):
         m = ((df.t_resp < 0) & (df.choice != 0)).to_numpy()
         y = df.truth.to_numpy()
         sgn = np.sign(np.sum(df.dw[m] * (y - 35 * df.side)[m]))
-        scan.append((np.mean(np.abs(y - 35 * df.side - sgn * 124 * df.dw)[m]), lag, sgn))
+        scan.append((np.mean(np.abs(y - 35 * df.side - np.clip(sgn * 124 * df.dw, -THR, THR))[m]),
+                     lag, sgn))
     _, lag, sgn = min(scan)
     df = build_samples(d, lag)
     y = df.truth.to_numpy()
@@ -84,13 +87,13 @@ def run(eid):
                              (y - 35 * df.side)[pre], rcond=None)[0][0]
     G = sgn * 4 * WHEEL_RADIUS_MM
     pred = {}
-    pred['physics_side'] = 35 * df.side + G * df.dw_frozen
+    pred['physics_side'] = 35 * df.side + np.clip(G * df.dw_frozen, -THR, THR)
     choice_w = -np.sign(G * df.dw_resp)  # stimulus moved toward -> side it came from
     err = df.off_minus_fb > 1.5
     nogo = df.off_minus_fb < 0.5
     side_hat = np.where(err, -choice_w, choice_w)
     side_hat = np.where(nogo, 0, side_hat)
-    pred['physics_infer'] = 35 * side_hat + G * df.dw_frozen
+    pred['physics_infer'] = 35 * side_hat + np.clip(G * df.dw_frozen, -THR, THR)
     tiers = {'hgb_T0': ['dw', 't_on'],
              'hgb_T1': ['dw', 't_on', 'dw_frozen', 't_resp', 'dw_resp'],
              'hgb_T2': ['dw', 't_on', 'dw_frozen', 't_resp', 'dw_resp', 't_fb', 't_off', 'off_minus_fb']}

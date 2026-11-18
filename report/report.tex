@@ -82,7 +82,7 @@ up to 60\,s, so pooling them with answered trials would let a handful of trials 
 Let $w(t)$ be the wheel angle in radians, $t_\mathrm{on}$ the photodiode stimulus onset and $t_\mathrm{resp}$
 the response time. The predicted azimuth is
 \begin{equation}
-\hat x(t) = x_0 + G\,\bigl[w(\min(t-\tau,\ t_\mathrm{resp})) - w(t_\mathrm{on}-\tau)\bigr],
+\hat x(t) = x_0 + \operatorname{clip}_{\pm35^\circ}\Bigl(G\,\bigl[w(\min(t-\tau,\ t_\mathrm{resp})) - w(t_\mathrm{on}-\tau)\bigr]\Bigr),
 \qquad G = -4\,\tfrac{\circ}{\mathrm{mm}}\times 31\,\mathrm{mm} = -124^\circ/\mathrm{rad}.
 \label{eq:physics}
 \end{equation}
@@ -98,6 +98,10 @@ fitted in-sample.
 \item \textbf{Freeze at response.} When the threshold is crossed, Bonsai stops moving the stimulus. The screen
 catches up to the threshold crossing $\tau$ later, so the prediction holds $w(t_\mathrm{resp})$ for all
 $t-\tau\ge t_\mathrm{resp}$.
+\item \textbf{Clip at threshold.} The stimulus freezes once it has moved $35^\circ$, so the displacement term
+is clipped to $\pm35^\circ$. Without the clip, trials with very fast responses, in which the wheel is already
+turning at stimulus onset, overshoot to $\pm100^\circ$ and beyond. The clip lowers the post-response error from
+2.5 to 2.0$^\circ$ and leaves the pre-response error unchanged.
 \item \textbf{Reference.} Displacement is measured from $w(t_\mathrm{on}-\tau)$, the wheel state that
 corresponds to the first displayed frame.
 \end{itemize}
@@ -148,8 +152,8 @@ encoder step ($0.77^\circ$).}
 
 The physics model reproduces the logged azimuth almost exactly (Table~\ref{tab:summary},
 Fig.~\ref{fig:main}). Between stimulus onset and response, the median absolute error is \PreMedAE$^\circ$ and
-\PreTick\% of samples lie within one encoder step. Most of the remaining error comes from the $\sim$10\,ms
-alignment jitter during fast movements. Inferring the side from the wheel and the event times gives the same
+\PreTick\% of samples lie within one encoder step. The $\sim$10\,ms alignment jitter during fast movements
+is a likely source of the remaining error, though we did not test this. Inferring the side from the wheel and the event times gives the same
 accuracy on answered trials: it recovers the side on 5{,}121 of 5{,}122 answered trials. The one
 miss has a corrupt \texttt{stimOff} time, 28\,s before feedback, which is an extraction error in the trials
 table. After the response the error is larger (\PostMAE$^\circ$), because Bonsai freezes on the last
@@ -161,6 +165,16 @@ Without the event times the wheel cannot fix $x_0$, so decoders that see only th
 Once the feedback and stimulus-off times are added (T2), the outcome and hence the side become available and the
 learned model approaches the physics model (\TtwoMAE$^\circ$ before response). It stays worse because it has
 to learn the closed-form mapping from data. On no-go trials, every decoder without access to the side fails.
+
+\paragraph{Single trials.} To make the pooled scores concrete, Fig.~\ref{fig:main}a--f shows trials ranked by
+their own $R^2$ for the physics decoder with the side inferred. We scored \NTrialRtwo{} answered trials; \NFlat{}
+trials whose logged position never moved have no $R^2$. The median per-trial $R^2$ is \TrialRtwoMed, and
+\TrialRtwoNine\% of trials exceed 0.9. Per-trial $R^2$ is lower than the pooled value because the variance of
+a single trial is smaller, so the constant post-response offset of a few degrees weighs more. The two worst trials
+come from atypical inputs: a corrupt stimOff time in the trials table (panel e), and a very fast response with
+the wheel already turning at stimulus onset, where the logged stimulus stopped at $\approx60^\circ$ instead of
+the $70^\circ$ threshold (panel f). On the same trials the wheel-only GBM (T0) has strongly negative $R^2$, because it places the
+stimulus on the wrong side for much of the trial.
 
 \begin{figure}[t]
 \centering
@@ -181,8 +195,8 @@ to learn the closed-form mapping from data. On no-go trials, every decoder witho
 \begin{itemize}
 \item The lag $\tau$ is fitted on the same samples on which accuracy is reported. It is a single parameter on
 $\sim10^5$ samples, so overfitting is negligible. For a new session without a position log, a fixed default of $\tau=65$\,ms costs
-little. Across the 8 sessions, the mean absolute error before response rose by at most $0.2^\circ$, except in
-the session with $\tau=\LagMax$\,ms (\texttt{c4432264}), where it rose from $0.84^\circ$ to $1.43^\circ$. Lags
+little. Across the 8 sessions, the mean absolute error before response rose by at most $0.22^\circ$, except in
+the session with $\tau=\LagMax$\,ms (\texttt{c4432264}), where it rose from $0.82^\circ$ to $1.43^\circ$. Lags
 therefore vary between rigs.
 \item Only iblrig-6 sessions were tested. Newer task versions may log differently or use different settings
 (gain, threshold, positions), and these should be read from \texttt{\_iblrig\_taskSettings}.
